@@ -106,11 +106,19 @@ end
 
 function setup_cairo()
 	if conky_window == nil then return end
-	return cairo_create(cairo_xlib_surface_create(
+	local cs = cairo_xlib_surface_create(
 		conky_window.display,
 		conky_window.drawable,
 		conky_window.visual,
 		conky_window.width,
-		conky_window.height))
+		conky_window.height)
+	local cr = cairo_create(cs)
+	return cr, cs
+end
+
+function destroy_cairo(cr, cs)
+	cairo_destroy(cr)
+	if cs == nil then return end
+	cairo_surface_destroy(cs)
 end
 

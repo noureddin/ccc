@@ -209,7 +209,7 @@ function draw_square(cr, x_topleft, y_topleft, side, a)
 	end
 end
 
-preview_shapes = {
+PREVIEW_SHAPES = {
 	'cross', 'reverse_cross', 'nought', 'circle',
 	'smallnought', 'bignought', 'smallcircle', 'bigcircle',
 	'bar', 'reverse_bar', 'pipe', 'reverse_pipe',

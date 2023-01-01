@@ -1,7 +1,7 @@
 require 'cairo'
 
 require 'colors'  -- color() & lang.lua
-require 'fill'    -- draw_square() & preview_shapes
+require 'fill'    -- draw_square() & PREVIEW_SHAPES
 require 'time'
 require 'cairoutils'
 
@@ -205,7 +205,6 @@ function parse_streaks(streaks, chain_fills, global_fills)
 end
 
 function draw_chain(cr, label, y_offset, style, streaks, inverse, dfill)
-	print(style['today_border_thickness'])
 	local has   = streaks['has']
 	local today = streaks['today']
 	local ep    = streaks['myepoch']
@@ -259,90 +258,101 @@ function draw_chain(cr, label, y_offset, style, streaks, inverse, dfill)
 	return y - Y_TOPLEFT + CHAIN_GAP + _if(x == X_TOPLEFT, 0, SIDE + GAP)
 end
 
-function conky_draw_chains()
-	local cr = setup_cairo()
-	if cr == nil or tonumber(conky_parse('${updates}')) < 1 then return end
+function draw_chains(cr)
 
-	if not ccc_preview_fills then
+	fix_font_size(cr)
 
-		fix_font_size(cr)
+	local y_offset = 0
+	for i = 1, #ccc_chains do
+		local ch = ccc_chains[i]
+		local label = ch['label']
+		local background_color  = color(ch['background_color']) or BACKGROUND_COLOR
+		local date_color        = color(ch['date_color']) or DATE_COLOR
+		local border_color      = color(ch['border_color']) or BORDER_COLOR
+		local border_thickness  = unless_nil(ch['border_thickness'], BORDER_THICKNESS)
+		local style = {
+			color                  = color(ch['color']),
+			today_border_thickness = unless_nil(ch['today_border_thickness'], TODAY_BORDER_THICKNESS),
+			full_border_below      = ch['full_border_below'],
 
-		local y_offset = 0
-		for i = 1, #ccc_chains do
-			local ch = ccc_chains[i]
-			local label = ch['label']
-			local background_color  = color(ch['background_color']) or BACKGROUND_COLOR
-			local date_color        = color(ch['date_color']) or DATE_COLOR
-			local border_color      = color(ch['border_color']) or BORDER_COLOR
-			local border_thickness  = unless_nil(ch['border_thickness'], BORDER_THICKNESS)
-			local style = {
-				color                  = color(ch['color']),
-				today_border_thickness = unless_nil(ch['today_border_thickness'], TODAY_BORDER_THICKNESS),
-				full_border_below      = ch['full_border_below'],
+			empty_background_color   = color(ch['empty_background_color'])   or background_color or EMPTY_BACKGROUND_COLOR,
+			full_background_color    = color(ch['full_background_color'])    or background_color or FULL_BACKGROUND_COLOR,
+			partial_background_color = color(ch['partial_background_color']) or background_color or PARTIAL_BACKGROUND_COLOR,
 
-				empty_background_color   = color(ch['empty_background_color'])   or background_color or EMPTY_BACKGROUND_COLOR,
-				full_background_color    = color(ch['full_background_color'])    or background_color or FULL_BACKGROUND_COLOR,
-				partial_background_color = color(ch['partial_background_color']) or background_color or PARTIAL_BACKGROUND_COLOR,
+			empty_date_color   = color(ch['empty_date_color'])   or date_color or EMPTY_DATE_COLOR,
+			full_date_color    = color(ch['full_date_color'])    or date_color or FULL_DATE_COLOR,
+			partial_date_color = color(ch['partial_date_color']) or date_color or PARTIAL_DATE_COLOR,
 
-				empty_date_color   = color(ch['empty_date_color'])   or date_color or EMPTY_DATE_COLOR,
-				full_date_color    = color(ch['full_date_color'])    or date_color or FULL_DATE_COLOR,
-				partial_date_color = color(ch['partial_date_color']) or date_color or PARTIAL_DATE_COLOR,
+			empty_border_color   = color(ch['empty_border_color'])   or border_color or EMPTY_BORDER_COLOR,
+			full_border_color    = color(ch['full_border_color'])    or border_color or FULL_BORDER_COLOR,
+			partial_border_color = color(ch['partial_border_color']) or border_color or PARTIAL_BORDER_COLOR,
 
-				empty_border_color   = color(ch['empty_border_color'])   or border_color or EMPTY_BORDER_COLOR,
-				full_border_color    = color(ch['full_border_color'])    or border_color or FULL_BORDER_COLOR,
-				partial_border_color = color(ch['partial_border_color']) or border_color or PARTIAL_BORDER_COLOR,
+			empty_border_thickness   = unless_nil(ch['empty_border_thickness'],   unless_nil(border_thickness, EMPTY_BORDER_THICKNESS)),
+			full_border_thickness    = unless_nil(ch['full_border_thickness'],    unless_nil(border_thickness, FULL_BORDER_THICKNESS)),
+			partial_border_thickness = unless_nil(ch['partial_border_thickness'], unless_nil(border_thickness, PARTIAL_BORDER_THICKNESS)),
+		}
 
-				empty_border_thickness   = unless_nil(ch['empty_border_thickness'],   unless_nil(border_thickness, EMPTY_BORDER_THICKNESS)),
-				full_border_thickness    = unless_nil(ch['full_border_thickness'],    unless_nil(border_thickness, FULL_BORDER_THICKNESS)),
-				partial_border_thickness = unless_nil(ch['partial_border_thickness'], unless_nil(border_thickness, PARTIAL_BORDER_THICKNESS)),
-			}
-
-			local streaks  = parse_streaks(ch['streaks'], ch['fills'], FILLS)
-			local inverse  = ch['inverse']
-			local dfill    = ch['default_fill'] or DEFAULT_FILL
-			y_offset = draw_chain(cr, label, y_offset, style, streaks, inverse, dfill)
-		end
-
-	else
-
-		local shapes = preview_shapes
-
-		set_font(cr, LABEL_FONT, {size=LABEL_FONT['size']*3/4, color={0,0,0}})
-		local ww = 0
-		for i, t in ipairs(shapes) do
-			local w, h, xb, yb = get_text_dimensions(cr, t)
-			if w > ww then ww = w end
-		end
-
-		local MAX = 4  -- in a single row
-
-		local endgap = 3
-		local firstgap = _if(ccc_preview_symmetric_gap, endgap, 1)
-
-		function x0(c) return firstgap*GAP + c*(SIDE+endgap*GAP+ww) end
-		function y0(c) return firstgap*GAP + c*(SIDE+endgap*GAP) end
-
-		if ccc_preview_background then
-			local xside = x0(MAX)
-			local yside = y0(math.ceil(#shapes / MAX))
-			cairo_rectangle(cr, 0, 0, xside, yside)
-			set_color(cr, color(ccc_preview_background))
-			cairo_fill(cr)
-		end
-
-		for i, t in ipairs(shapes) do
-			local x = x0((i-1)%MAX)
-			local y = y0(math.floor((i-1)/MAX))
-			draw_square(cr, x, y, SIDE, {
-				fill = t,
-				fill_color = color(ccc_preview_cell_color) or color('#1034A6'),
-				border_thickness = unless_nil(ccc_preview_cell_border_thickness, BORDER_THICKNESS),
-				border_color = color(ccc_preview_cell_border_color) or BORDER_COLOR,
-				background_color = color(ccc_preview_cell_backgroundcolor) or BACKGROUND_COLOR,
-			})
-			set_color(cr, color(ccc_preview_label_color) or {0,0,0})
-			show_text(cr, x + SIDE*5/4, y + SIDE*3/4, t)
-		end
-
+		local streaks  = parse_streaks(ch['streaks'], ch['fills'], FILLS)
+		local inverse  = ch['inverse']
+		local dfill    = ch['default_fill'] or DEFAULT_FILL
+		y_offset = draw_chain(cr, label, y_offset, style, streaks, inverse, dfill)
 	end
+
 end
+
+function preview_fills(cr)
+
+	-- determine column width
+	set_font(cr, LABEL_FONT, {size=LABEL_FONT['size']*3/4, color={0,0,0}})
+	local ww = 0
+	for i, t in ipairs(PREVIEW_SHAPES) do
+		local w, h, xb, yb = get_text_dimensions(cr, t)
+		if w > ww then ww = w end
+	end
+
+	local MAX = 4  -- in a single row
+
+	local endgap = 3
+	local firstgap = _if(ccc_preview_symmetric_gap, endgap, 1)
+
+	function x0(c) return firstgap*GAP + c*(SIDE+endgap*GAP+ww) end
+	function y0(c) return firstgap*GAP + c*(SIDE+endgap*GAP) end
+
+	if ccc_preview_background then
+		local xside = x0(MAX)
+		local yside = y0(math.ceil(#PREVIEW_SHAPES / MAX))
+		cairo_rectangle(cr, 0, 0, xside, yside)
+		set_color(cr, color(ccc_preview_background))
+		cairo_fill(cr)
+	end
+
+	for i, t in ipairs(PREVIEW_SHAPES) do
+		local x = x0((i-1)%MAX)
+		local y = y0(math.floor((i-1)/MAX))
+		draw_square(cr, x, y, SIDE, {
+			fill = t,
+			fill_color = color(ccc_preview_cell_color) or color('#1034A6'),
+			border_thickness = unless_nil(ccc_preview_cell_border_thickness, BORDER_THICKNESS),
+			border_color = color(ccc_preview_cell_border_color) or BORDER_COLOR,
+			background_color = color(ccc_preview_cell_backgroundcolor) or BACKGROUND_COLOR,
+		})
+		set_color(cr, color(ccc_preview_label_color) or {0,0,0})
+		show_text(cr, x + SIDE*5/4, y + SIDE*3/4, t)
+	end
+
+end
+
+
+function conky_draw_chains()
+	local cr, cs = setup_cairo()
+	if cr == nil or tonumber(conky_parse('${updates}')) < 1 then return end
+	--
+	if ccc_preview_fills then
+		preview_fills(cr)
+	else
+		draw_chains(cr)
+	end
+	--
+	destroy_cairo(cr, cs)
+end
+
