@@ -55,10 +55,11 @@ Note that your task need to be:
 
 ## Installation
 
-1. Download this repo or clone it:
+1. Install the package `conky-all` on Debian/Ubuntu (`sudo apt-get install conky-all`), or `conky` in others.
+2. Download this repo or clone it:
     - Click on the green “Code” button near the top of the page, and click “Download ZIP”, then extract it.
     - Or type `git clone https://github.com/noureddin/ccc` in a terminal.
-2. Open the `ccc` directory you now have, and run `start.sh`.
+3. Open the `ccc` directory you now have, and run `start.sh`.
 
 ## Usage
 
