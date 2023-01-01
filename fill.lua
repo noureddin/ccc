@@ -89,7 +89,7 @@ end
 
 function _circles(cr, x, y, s, n, scale)
 	local R = s/n/2
-	local r = s/n/2 * unless_nil(scale, 1)
+	local r = s/n/2 * (scale or 1)
 	for i = 1, n do
 	for j = 1, n do
 		_circ(cr,
@@ -105,7 +105,7 @@ end
 
 function _nought(cr, x, y, s, scale)
 	local R = s/2
-	local r = s/2 * unless_nil(scale, 1)
+	local r = s/2 * (scale or 1)
 	local xc = x+R
 	local yc = y+R
 	_circ(cr, xc, yc, r)

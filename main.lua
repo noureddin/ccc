@@ -8,25 +8,26 @@ require 'cairoutils'
 conky = {}
 require 'ccc'  -- the ccc_* parameters
 
-local WEEK_START = unless_nil(ccc_week_start, 1)
-local SHOW_DATE = unless_nil(ccc_show_date, true)
-local DATE_DAY_ONLY = unless_nil(ccc_date_day_only, true)
+local WEEK_START     = ccc_week_start or 1
+local SHOW_DATE      = unless_nil(ccc_show_date, true)
+local DATE_DAY_ONLY  = unless_nil(ccc_date_day_only, true)
 local FORCE_START_ON = ccc_force_start_on
 
 local SIDE = ccc_side or 25
 
 -- cells can be: empty, full, or partial
 
-local         BORDER_THICKNESS = unless_nil(        ccc_border_thickness, math.round(SIDE/25))
-local   EMPTY_BORDER_THICKNESS = unless_nil(  ccc_empty_border_thickness, BORDER_THICKNESS)
-local    FULL_BORDER_THICKNESS = unless_nil(   ccc_full_border_thickness, BORDER_THICKNESS)
-local PARTIAL_BORDER_THICKNESS = unless_nil(ccc_partial_border_thickness, BORDER_THICKNESS)
-local   TODAY_BORDER_THICKNESS = unless_nil(  ccc_today_border_thickness, BORDER_THICKNESS*2)
+local         BORDER_THICKNESS =         ccc_border_thickness or math.round(SIDE/25)
+local   EMPTY_BORDER_THICKNESS =   ccc_empty_border_thickness or BORDER_THICKNESS
+local    FULL_BORDER_THICKNESS =    ccc_full_border_thickness or BORDER_THICKNESS
+local PARTIAL_BORDER_THICKNESS = ccc_partial_border_thickness or BORDER_THICKNESS
+local   TODAY_BORDER_THICKNESS =   ccc_today_border_thickness or BORDER_THICKNESS*2
 
 local         BORDER_COLOR = color(        ccc_border_color) or {0, 0, 0, 0.33}
 local   EMPTY_BORDER_COLOR = color(  ccc_empty_border_color) or BORDER_COLOR
 local    FULL_BORDER_COLOR = color(   ccc_full_border_color) or BORDER_COLOR
 local PARTIAL_BORDER_COLOR = color(ccc_partial_border_color) or BORDER_COLOR
+local   TODAY_BORDER_COLOR = color(  ccc_today_border_color) or BORDER_COLOR
 
 local LABEL_COLOR = color(ccc_label_color) or BORDER_COLOR
 
@@ -58,16 +59,16 @@ local DATE_FONT = {
 	-- size & other attribs are automatically determined
 }
 
-local LABEL_X = unless_nil(ccc_topleft_x, 10)
+local LABEL_X = ccc_topleft_x or 10
 local LABEL_WIDTH  -- call fix_font_size() after initializing cairo
 
 local X_TOPLEFT -- = LABEL_X + LABEL_WIDTH + GAP
-local Y_TOPLEFT = unless_nil(ccc_topleft_y, 10)
+local Y_TOPLEFT = ccc_topleft_y or 10
 
-local       GAP = unless_nil(ccc_gap,       math.floor(SIDE/3))
-local LABEL_GAP = unless_nil(ccc_label_gap, GAP)
-local  WEEK_GAP = unless_nil(ccc_week_gap,  2*GAP)
-local CHAIN_GAP = unless_nil(ccc_chain_gap, math.round(1.5*GAP))
+local       GAP = ccc_gap       or math.floor(SIDE/3)
+local LABEL_GAP = ccc_label_gap or GAP
+local  WEEK_GAP = ccc_week_gap  or 2*GAP
+local CHAIN_GAP = ccc_chain_gap or math.round(1.5*GAP)
 
 local FILLS = ccc_fills
 local DEFAULT_FILL = ccc_default_fill
@@ -190,7 +191,7 @@ function parse_streaks(streaks, chain_fills, global_fills)
 			has[intdate_to_mjd(bgn)] = chain_fills[len] or global_fills[len] or len
 		end
 	end
-	local start_mjd = unless_nil(table.min_key(has), 0)
+	local start_mjd = table.min_key(has) or 0
 	local start_epoch = mjd_to_epoch(start_mjd)
 	--
 	local today = normalize_to_localtime_midnight(now_epoch())
@@ -214,27 +215,28 @@ function draw_chain(cr, label, y_offset, style, streaks, inverse, dfill)
 	draw_label(cr, y, label)
 	--
 	local n = 0
-	local function select_style(what, fill)
-		return _if(fill == true, style['full_'..what],
-			   _if(fill,      style['partial_'..what],
-							  style['empty_'..what]))
-	end
 	local function draw(fill)
 		if inverse and (fill == nil or fill == true) then fill = not fill end
 		if dfill ~= nil and fill == true then fill = dfill end
 		if fill == 'full' then fill = true end  -- draw_square doesn't understand fill == 'full'
 		local month, day = os.date("%m", ep), os.date("%d", ep)
 		local is_today = ep == today
+		--
+		local function select_style(what)
+			return _if(is_today,      style['today_'..what],
+			       _if(fill == true,  style['full_'..what],
+			       _if(fill,          style['partial_'..what],
+			                          style['empty_'..what])))
+		end
+		--
 		draw_cell(cr, {
 				x_topleft = x,
 				y_topleft = y,
 				weight = _if(is_today, CAIRO_FONT_WEIGHT_BOLD, CAIRO_FONT_WEIGHT_NORMAL),
-				border_thickness =
-					_if(is_today, style['today_border_thickness'],
-						select_style('border_thickness', fill)),
-				border_color = select_style('border_color', fill),
-				date_color = select_style('date_color', fill),
-				background_color = select_style('background_color', fill),
+				border_thickness = select_style('border_thickness'),
+				border_color = select_style('border_color'),
+				date_color = select_style('date_color'),
+				background_color = select_style('background_color'),
 				fill_color = style['color'],
 				fill = fill,
 				month = month,
@@ -269,10 +271,11 @@ function draw_chains(cr)
 		local background_color  = color(ch['background_color']) or BACKGROUND_COLOR
 		local date_color        = color(ch['date_color']) or DATE_COLOR
 		local border_color      = color(ch['border_color']) or BORDER_COLOR
-		local border_thickness  = unless_nil(ch['border_thickness'], BORDER_THICKNESS)
+		local border_thickness  = ch['border_thickness'] or BORDER_THICKNESS
 		local style = {
 			color                  = color(ch['color']),
-			today_border_thickness = unless_nil(ch['today_border_thickness'], TODAY_BORDER_THICKNESS),
+			today_border_color     = color(ch['today_border_color']) or TODAY_BORDER_COLOR,
+			today_border_thickness = ch['today_border_thickness'] or TODAY_BORDER_THICKNESS,
 			full_border_below      = ch['full_border_below'],
 
 			empty_background_color   = color(ch['empty_background_color'])   or background_color or EMPTY_BACKGROUND_COLOR,
@@ -287,9 +290,9 @@ function draw_chains(cr)
 			full_border_color    = color(ch['full_border_color'])    or border_color or FULL_BORDER_COLOR,
 			partial_border_color = color(ch['partial_border_color']) or border_color or PARTIAL_BORDER_COLOR,
 
-			empty_border_thickness   = unless_nil(ch['empty_border_thickness'],   unless_nil(border_thickness, EMPTY_BORDER_THICKNESS)),
-			full_border_thickness    = unless_nil(ch['full_border_thickness'],    unless_nil(border_thickness, FULL_BORDER_THICKNESS)),
-			partial_border_thickness = unless_nil(ch['partial_border_thickness'], unless_nil(border_thickness, PARTIAL_BORDER_THICKNESS)),
+			empty_border_thickness   = ch['empty_border_thickness']   or border_thickness or EMPTY_BORDER_THICKNESS,
+			full_border_thickness    = ch['full_border_thickness']    or border_thickness or FULL_BORDER_THICKNESS,
+			partial_border_thickness = ch['partial_border_thickness'] or border_thickness or PARTIAL_BORDER_THICKNESS,
 		}
 
 		local streaks  = parse_streaks(ch['streaks'], ch['fills'], FILLS)
@@ -332,7 +335,7 @@ function preview_fills(cr)
 		draw_square(cr, x, y, SIDE, {
 			fill = t,
 			fill_color = color(ccc_preview_cell_color) or color('#1034A6'),
-			border_thickness = unless_nil(ccc_preview_cell_border_thickness, BORDER_THICKNESS),
+			border_thickness = ccc_preview_cell_border_thickness or BORDER_THICKNESS,
 			border_color = color(ccc_preview_cell_border_color) or BORDER_COLOR,
 			background_color = color(ccc_preview_cell_backgroundcolor) or BACKGROUND_COLOR,
 		})
