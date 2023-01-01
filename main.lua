@@ -223,7 +223,8 @@ function draw_chain(cr, label, y_offset, style, streaks, inverse, dfill)
 		local is_today = ep == today
 		--
 		local function select_style(what)
-			return _if(is_today,      style['today_'..what],
+			return _if(is_today and style['today_'..what],
+			                          style['today_'..what],
 			       _if(fill == true,  style['full_'..what],
 			       _if(fill,          style['partial_'..what],
 			                          style['empty_'..what])))
